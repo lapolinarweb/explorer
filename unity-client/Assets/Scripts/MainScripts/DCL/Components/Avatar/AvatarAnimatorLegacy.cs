@@ -55,6 +55,7 @@ public class AvatarAnimatorLegacy : MonoBehaviour
     public AnimationCurve walkBlendtreeCurve;
     public AnimationCurve runBlendtreeCurve;
     public AnimationCurve idleBlendtreeCurve;
+    public LayerMask groundLayers;
 
     internal System.Action<BlackBoard> currentState;
 
@@ -97,8 +98,7 @@ public class AvatarAnimatorLegacy : MonoBehaviour
         //NOTE(Brian): isGrounded?
         blackboard.isGrounded = Physics.Raycast(target.transform.position + rayOffset,
                                                 Vector3.down,
-                                                RAY_OFFSET_LENGTH - ELEVATION_OFFSET,
-                                                DCLCharacterController.i.groundLayers);
+                                                RAY_OFFSET_LENGTH - ELEVATION_OFFSET, groundLayers);
 
 #if UNITY_EDITOR
         Debug.DrawRay(target.transform.position + rayOffset, Vector3.down * (RAY_OFFSET_LENGTH - ELEVATION_OFFSET), blackboard.isGrounded ? Color.green : Color.red);
