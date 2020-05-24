@@ -10,6 +10,8 @@ import { ParcelArray, countParcelsCloseTo } from 'shared/comms/interface/utils'
 import { worldToGrid } from 'atomicHelpers/parcelScenePositions'
 import defaultLogger from 'shared/logger'
 
+declare var window: any
+
 export const CAMPAIGN_PARCEL_SEQUENCE = [
   { x: -3, y: -33 },
   { x: 72, y: -9 },
@@ -82,7 +84,7 @@ export class TeleportController {
     const profile = getUserProfile().profile as Profile
 
     if (!tutorialEnabled() || profile.tutorialStep !== tutorialStepId.INITIAL_SCENE) {
-      ;(window as any)['unityInterface'].ShowWelcomeNotification()
+      window.unityInterface.ShowWelcomeNotification()
     }
   }
 

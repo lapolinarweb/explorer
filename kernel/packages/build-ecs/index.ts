@@ -127,7 +127,7 @@ function emitFile(fileName: string, services: ts.LanguageService) {
             reserved: ['dcl'],
           }
         : false,
-      compress: PRODUCTION,
+      compress: PRODUCTION ? {} : false,
       output: {
         comments: /^!/,
       },

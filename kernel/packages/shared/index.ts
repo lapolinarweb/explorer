@@ -244,6 +244,8 @@ export async function initShared(): Promise<Session | undefined> {
   store.dispatch(commsEstablished())
   console['groupEnd']()
 
+  Session.current.resolve(session)
+
   return session
 }
 

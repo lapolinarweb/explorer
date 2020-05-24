@@ -1,13 +1,25 @@
 import { getFromLocalStorage, saveToLocalStorage } from 'atomicHelpers/localStorage'
+import { Authenticator, AuthLink } from 'dcl-crypto'
 import { call, fork, put, race, select, take, takeEvery, takeLatest } from 'redux-saga/effects'
+import { backupProfile } from 'shared/profiles/generateRandomUserProfile'
 import { NotificationType } from 'shared/types'
-import { getServerConfigurations, ALL_WEARABLES, getWearablesSafeURL } from '../../config'
+import { globalDCL } from 'unity-interface/globalDCL'
+import { sha3 } from 'web3x/utils'
+import { ALL_WEARABLES, getServerConfigurations, getWearablesSafeURL } from '../../config'
+import { WORLD_EXPLORER } from '../../config/index'
+import { RarityEnum } from '../airdrops/interface'
+import { getUserProfile } from '../comms/peers'
+import { CATALYST_REALM_INITIALIZED } from '../dao/actions'
+import { getUpdateProfileServer, isRealmInitialized } from '../dao/selectors'
+import { ExplorerIdentity, identity } from '../index'
+import { getTutorialBaseURL } from '../location'
 import defaultLogger from '../logger'
 import { isInitialized } from '../renderer/selectors'
 import { RENDERER_INITIALIZED } from '../renderer/types'
 import {
   addCatalog,
   AddCatalogAction,
+  addedProfileToCatalog,
   ADD_CATALOG,
   catalogLoaded,
   CATALOG_LOADED,
@@ -15,66 +27,54 @@ import {
   InventoryRequest,
   inventoryRequest,
   inventorySuccess,
+  InventorySuccess,
   INVENTORY_FAILURE,
   INVENTORY_REQUEST,
   INVENTORY_SUCCESS,
   notifyNewInventoryItem,
   NOTIFY_NEW_INVENTORY_ITEM,
-  InventorySuccess,
-  PROFILE_REQUEST,
-  PROFILE_SUCCESS,
-  PROFILE_RANDOM,
-  SAVE_PROFILE_REQUEST,
+  ProfileRandomAction,
+  profileRequest,
   ProfileRequestAction,
   profileSuccess,
-  ProfileRandomAction,
   ProfileSuccessAction,
+  PROFILE_RANDOM,
+  PROFILE_REQUEST,
+  PROFILE_SUCCESS,
+  saveProfileFailure,
   SaveProfileRequest,
   saveProfileSuccess,
-  profileRequest,
-  saveProfileFailure,
-  addedProfileToCatalog,
+  SAVE_PROFILE_REQUEST,
 } from './actions'
 import { generateRandomUserProfile } from './generateRandomUserProfile'
 import {
   baseCatalogsLoaded,
   getEthereumAddress,
+  getExclusiveCatalog,
   getInventory,
   getProfile,
   getProfileDownloadServer,
-  getExclusiveCatalog,
 } from './selectors'
 import { processServerProfile } from './transformations/processServerProfile'
 import { profileToRendererFormat } from './transformations/profileToRendererFormat'
 import { ensureServerFormat } from './transformations/profileToServerFormat'
 import {
   Catalog,
-  Profile,
-  WearableId,
-  Wearable,
   Collection,
-  Entity,
-  EntityField,
+  ContentFile,
   ControllerEntity,
   ControllerEntityContent,
-  EntityType,
-  Pointer,
-  ContentFile,
-  ENTITY_FILE_NAME,
   DeployData,
+  Entity,
+  EntityField,
+  EntityType,
+  ENTITY_FILE_NAME,
+  Pointer,
+  Profile,
+  Wearable,
+  WearableId,
 } from './types'
-import { identity, ExplorerIdentity } from '../index'
-import { Authenticator, AuthLink } from 'dcl-crypto'
-import { sha3 } from 'web3x/utils'
-import { CATALYST_REALM_INITIALIZED } from '../dao/actions'
-import { isRealmInitialized, getUpdateProfileServer } from '../dao/selectors'
-import { getUserProfile } from '../comms/peers'
-import { WORLD_EXPLORER } from '../../config/index'
-import { backupProfile } from 'shared/profiles/generateRandomUserProfile'
-import { getTutorialBaseURL } from '../location'
 import { takeLatestById } from './utils/takeLatestById'
-import { UnityInterfaceContainer } from 'unity-interface/dcl'
-import { RarityEnum } from '../airdrops/interface'
 
 type Timestamp = number
 type ContentFileHash = string
@@ -82,8 +82,6 @@ type ContentFileHash = string
 const CID = require('cids')
 const multihashing = require('multihashing-async')
 const toBuffer = require('blob-to-buffer')
-
-declare const globalThis: Window & UnityInterfaceContainer
 
 export const getCurrentUserId = () => identity.address
 
@@ -284,11 +282,11 @@ export async function fetchCatalog(url: string) {
 }
 
 export function sendWearablesCatalog(catalog: Catalog) {
-  globalThis.unityInterface.AddWearablesToCatalog(catalog)
+  globalDCL.unityInterface.AddWearablesToCatalog(catalog)
 }
 
 export function handleNewInventoryItem() {
-  globalThis.unityInterface.ShowNotification({
+  globalDCL.unityInterface.ShowNotification({
     type: NotificationType.GENERIC,
     message: 'You received an exclusive wearable NFT mask! Check it out in the avatar editor.',
     buttonMessage: 'OK',
@@ -325,7 +323,7 @@ export function* submitProfileToRenderer(action: ProfileSuccessAction): any {
     const forRenderer = profileToRendererFormat(profile)
     forRenderer.hasConnectedWeb3 = action.payload.hasConnectedWeb3
 
-    globalThis.unityInterface.AddUserProfileToCatalog(forRenderer)
+    globalDCL.unityInterface.AddUserProfileToCatalog(forRenderer)
 
     yield put(addedProfileToCatalog(action.payload.userId, forRenderer))
   }
@@ -336,7 +334,7 @@ function* sendLoadProfile(profile: Profile) {
     yield take(CATALOG_LOADED)
   }
   const rendererFormat = profileToRendererFormat(profile, identity)
-  globalThis.unityInterface.LoadProfile(rendererFormat)
+  globalDCL.unityInterface.LoadProfile(rendererFormat)
 }
 
 export function* handleFetchInventory(action: InventoryRequest) {

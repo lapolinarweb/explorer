@@ -1,47 +1,44 @@
-import { takeEvery, put, call, select, take } from 'redux-saga/effects'
-import { UnityInterfaceContainer } from '../../unity-interface/dcl'
-import {
-  MESSAGE_RECEIVED,
-  MessageReceived,
-  messageReceived,
-  SEND_MESSAGE,
-  SendMessage,
-  sendPrivateMessage,
-} from './actions'
+import { Vector3Component } from 'atomicHelpers/landHelpers'
 import { uuid } from 'atomicHelpers/math'
-import { ChatMessageType, ChatMessage } from 'shared/types'
-import { EXPERIENCE_STARTED } from 'shared/loading/types'
-import { PayloadAction } from 'typesafe-actions'
+import { parseParcelPosition, worldToGrid } from 'atomicHelpers/parcelScenePositions'
+import { getServerConfigurations, SHOW_FPS_COUNTER, USE_NEW_CHAT } from 'config'
+import { call, put, select, take, takeEvery } from 'redux-saga/effects'
+import { sampleDropData } from 'shared/airdrops/sampleDrop'
 import { queueTrackingEvent } from 'shared/analytics'
+import { expressionExplainer, isValidExpression, validExpressions } from 'shared/apis/expressionExplainer'
 import { sendPublicChatMessage } from 'shared/comms'
+import { notifyStatusThroughChat } from 'shared/comms/chat'
+import { AvatarMessage, AvatarMessageType } from 'shared/comms/interface/types'
 import {
+  avatarMessageObservable,
+  findPeerByName,
   getCurrentUser,
   peerMap,
-  findPeerByName,
   removeFromMutedUsers,
-  avatarMessageObservable,
 } from 'shared/comms/peers'
-import { parseParcelPosition, worldToGrid } from 'atomicHelpers/parcelScenePositions'
-import { TeleportController } from 'shared/world/TeleportController'
-import { notifyStatusThroughChat } from 'shared/comms/chat'
-import defaultLogger from 'shared/logger'
 import { catalystRealmConnected, changeRealm, changeToCrowdedRealm } from 'shared/dao'
+import { CATALYST_REALM_INITIALIZED } from 'shared/dao/actions'
+import { isRealmInitialized } from 'shared/dao/selectors'
+import { EXPERIENCE_STARTED } from 'shared/loading/types'
+import defaultLogger from 'shared/logger'
+import { ChatMessage, ChatMessageType } from 'shared/types'
+import { TeleportController } from 'shared/world/TeleportController'
+import { PayloadAction } from 'typesafe-actions'
+import { globalDCL } from 'unity-interface/globalDCL'
 import { addToMutedUsers } from '../comms/peers'
-import { isValidExpression, expressionExplainer, validExpressions } from 'shared/apis/expressionExplainer'
-import { StoreContainer } from '../store/rootTypes'
-import { SHOW_FPS_COUNTER, getServerConfigurations, USE_NEW_CHAT } from 'config'
-import { Vector3Component } from 'atomicHelpers/landHelpers'
-import { AvatarMessage, AvatarMessageType } from 'shared/comms/interface/types'
-import { sampleDropData } from 'shared/airdrops/sampleDrop'
-import { initializePrivateMessaging } from './private'
 import { identity } from '../index'
 import { AUTH_SUCCESSFUL } from '../loading/types'
 import { findProfileByName } from '../profiles/selectors'
-import { isRealmInitialized } from 'shared/dao/selectors'
-import { CATALYST_REALM_INITIALIZED } from 'shared/dao/actions'
+import {
+  MessageReceived,
+  messageReceived,
+  MESSAGE_RECEIVED,
+  SendMessage,
+  sendPrivateMessage,
+  SEND_MESSAGE,
+} from './actions'
+import { initializePrivateMessaging } from './private'
 import { isFriend } from './selectors'
-
-declare const globalThis: UnityInterfaceContainer & StoreContainer
 
 interface IChatCommand {
   name: string
@@ -124,7 +121,7 @@ function* trackEvents(action: PayloadAction<MessageEvent, ChatMessage>) {
 }
 
 function* handleReceivedMessage(action: MessageReceived) {
-  globalThis.unityInterface.AddMessageToChatWindow(action.payload)
+  globalDCL.unityInterface.AddMessageToChatWindow(action.payload)
 }
 
 function* handleSendMessage(action: SendMessage) {
@@ -163,7 +160,7 @@ function* handleSendMessage(action: SendMessage) {
     sendPublicChatMessage(entry.messageId, entry.body)
   }
 
-  globalThis.unityInterface.AddMessageToChatWindow(entry)
+  globalDCL.unityInterface.AddMessageToChatWindow(entry)
 }
 
 function handleChatCommand(message: string) {
@@ -396,7 +393,7 @@ function initChatCommands() {
 
       sendPublicChatMessage(uuid(), `␐${expression} ${time}`)
 
-      globalThis.unityInterface.TriggerSelfUserExpression(expression)
+      globalDCL.unityInterface.TriggerSelfUserExpression(expression)
 
       return {
         messageId: uuid(),
@@ -414,7 +411,7 @@ function initChatCommands() {
     const currentUser = getCurrentUser()
     if (!currentUser) throw new Error('cannotGetCurrentUser')
 
-    const user = findProfileByName(globalThis.globalStore.getState(), userName)
+    const user = findProfileByName(globalDCL.globalStore.getState(), userName)
 
     if (!user || !user.userId) {
       return {
@@ -426,7 +423,7 @@ function initChatCommands() {
       }
     }
 
-    const _isFriend: ReturnType<typeof isFriend> = isFriend(globalThis.globalStore.getState(), user.userId)
+    const _isFriend: ReturnType<typeof isFriend> = isFriend(globalDCL.globalStore.getState(), user.userId)
     if (!_isFriend) {
       return {
         messageId: uuid(),
@@ -437,7 +434,7 @@ function initChatCommands() {
       }
     }
 
-    globalThis.globalStore.dispatch(sendPrivateMessage(user.userId, message))
+    globalDCL.globalStore.dispatch(sendPrivateMessage(user.userId, message))
 
     return {
       messageId: uuid(),

@@ -4,31 +4,31 @@ declare var window: Window & { isEditor: boolean }
 
 global.isEditor = window.isEditor = true
 
+import { ReadOnlyVector3 } from 'decentraland-ecs/dist'
+import { uuid } from 'decentraland-ecs/src/ecs/helpers'
+import { sceneLifeCycleObservable } from 'decentraland-loader/lifecycle/controllers/scene'
 import { EventEmitter } from 'events'
 import future, { IFuture } from 'fp-future'
+import defaultLogger from 'shared/logger'
+import { normalizeContentMappings } from 'shared/selectors'
+import type { ILand, SceneJsonData } from 'shared/types'
+import { loadedSceneWorkers } from 'shared/world/parcelSceneManager'
+import { SceneWorker } from 'shared/world/SceneWorker'
+import type { builderUnityInterface } from 'unity-interface/builder/builderUnityInterface'
+import { loadBuilderScene } from 'unity-interface/builder/loadBuilderScene'
+import { setupBuilderInterface } from 'unity-interface/builder/setupBuilderInterface'
+import { unloadCurrentBuilderScene } from 'unity-interface/builder/unloadCurrentBuilderScene'
+import { updateBuilderScene } from 'unity-interface/builder/updateBuilderScene'
+import { globalDCL } from 'unity-interface/globalDCL'
+import { instantiateUnityRenderer } from 'unity-interface/instantiateUnityRenderer'
+import { UnityParcelSceneHandler } from 'unity-interface/UnityParcelSceneHandler'
 
-import { loadedSceneWorkers } from '../shared/world/parcelSceneManager'
-import { SceneJsonData, ILand } from '../shared/types'
-import { normalizeContentMappings } from '../shared/selectors'
-import { SceneWorker } from '../shared/world/SceneWorker'
-import { initializeUnity } from '../unity-interface/initializer'
-import {
-  UnityParcelScene,
-  loadBuilderScene,
-  updateBuilderScene,
-  futures,
-  unloadCurrentBuilderScene,
-  unityInterface,
-} from '../unity-interface/dcl'
-import defaultLogger from '../shared/logger'
-import { uuid } from '../decentraland-ecs/src/ecs/helpers'
-import { Vector3 } from '../decentraland-ecs/src/decentraland/math'
-import { sceneLifeCycleObservable } from '../decentraland-loader/lifecycle/controllers/scene'
-
+const { futures } = globalDCL
 const evtEmitter = new EventEmitter()
 const initializedEngine = future<void>()
+const unityInterface = globalDCL.unityInterface as builderUnityInterface
 
-let unityScene: UnityParcelScene | undefined
+let unityScene: UnityParcelSceneHandler | undefined
 let loadingEntities: string[] = []
 let builderSceneLoaded: IFuture<boolean> = future()
 
@@ -167,7 +167,8 @@ namespace editor {
    */
   export async function initEngine(container: HTMLElement, buildConfigPath: string) {
     try {
-      await initializeUnity(container, buildConfigPath)
+      await instantiateUnityRenderer(container, buildConfigPath)
+      setupBuilderInterface()
       defaultLogger.log('Engine initialized.')
       initializedEngine.resolve()
     } catch (err) {
@@ -246,14 +247,14 @@ namespace editor {
     unityInterface.ResetCameraZoomBuilder()
   }
 
-  export function getMouseWorldPosition(x: number, y: number): IFuture<Vector3> {
+  export function getMouseWorldPosition(x: number, y: number): IFuture<ReadOnlyVector3> {
     const id = uuid()
     futures[id] = future()
     unityInterface.GetMousePositionBuilder(x.toString(), y.toString(), id)
     return futures[id]
   }
 
-  export function handleUnitySomeVale(id: string, value: Vector3) {
+  export function handleUnitySomeVale(id: string, value: ReadOnlyVector3) {
     futures[id].resolve(value)
   }
 
@@ -280,7 +281,7 @@ namespace editor {
     return futures[id]
   }
 
-  export function setCameraPosition(position: Vector3) {
+  export function setCameraPosition(position: ReadOnlyVector3) {
     unityInterface.SetCameraPositionBuilder(position)
   }
 

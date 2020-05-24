@@ -99,6 +99,10 @@ export const USE_NEW_CHAT = location.search.indexOf('USE_OLD_CHAT') === -1
 
 const qs = queryString.parse(location.search)
 
+// Used for debugging
+export const CONNECT_TO_UNITY_EDITOR = location.search.indexOf('ws') !== -1
+export const WEBSOCKET_UNITY_EDITOR_URL = CONNECT_TO_UNITY_EDITOR && qs.ws
+
 // Comms
 export const USE_LOCAL_COMMS = location.search.indexOf('LOCAL_COMMS') !== -1 || PREVIEW
 export const COMMS = USE_LOCAL_COMMS ? 'v1-local' : qs.COMMS ? qs.COMMS : 'v2-p2p' // by default
@@ -127,7 +131,7 @@ export const DEBUG_LOGIN = location.search.indexOf('DEBUG_LOGIN') !== -1
 export const DEBUG_PM = location.search.indexOf('DEBUG_PM') !== -1
 
 export const AWS = location.search.indexOf('AWS') !== -1
-export const NO_MOTD = location.search.indexOf('NO_MOTD') !== -1
+export const SHOW_MESSAGE_OF_THE_DAY = location.search.indexOf('NO_MOTD') === -1
 
 export const DISABLE_AUTH = location.search.indexOf('DISABLE_AUTH') !== -1 || DEBUG
 export const ENGINE_DEBUG_PANEL = location.search.indexOf('ENGINE_DEBUG_PANEL') !== -1

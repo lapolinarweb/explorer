@@ -1,44 +1,45 @@
-import { ExplorerIdentity } from 'shared'
-import {
-  SocialClient,
-  FriendshipRequest,
-  Conversation,
-  PresenceType,
-  CurrentUserStatus,
-  UnknownUsersError,
-  UserPosition,
-} from 'dcl-social-client'
-import { SocialAPI, Realm as SocialRealm } from 'dcl-social-client/dist'
+import { Vector3Component } from 'atomicHelpers/landHelpers'
+import { worldToGrid } from 'atomicHelpers/parcelScenePositions'
+import { DEBUG_PM } from 'config'
 import { Authenticator } from 'dcl-crypto'
-import { takeEvery, put, select, call, take, delay } from 'redux-saga/effects'
 import {
-  SEND_PRIVATE_MESSAGE,
+  Conversation,
+  CurrentUserStatus,
+  FriendshipRequest,
+  PresenceType,
+  SocialClient,
+  UserPosition,
+  UnknownUsersError,
+} from 'dcl-social-client'
+import { Realm as SocialRealm, SocialAPI } from 'dcl-social-client/dist'
+import { call, delay, put, select, take, takeEvery } from 'redux-saga/effects'
+import { ExplorerIdentity } from 'shared'
+import { getRealm } from 'shared/dao/selectors'
+import { Realm } from 'shared/dao/types'
+import { getProfile, isAddedToCatalog } from 'shared/profiles/selectors'
+import { ChatMessageType, FriendshipAction, PresenceStatus } from 'shared/types'
+import { globalDCL } from 'unity-interface/globalDCL'
+import { unityInterface } from 'unity-interface/unityInterface/unityInterface'
+import { deepEqual } from '../../atomicHelpers/deepEqual'
+import { InitCatalystRealm, INIT_CATALYST_REALM, SetCatalystRealm, SET_CATALYST_REALM } from '../dao/actions'
+import { createLogger } from '../logger'
+import { ADDED_PROFILE_TO_CATALOG } from '../profiles/actions'
+import { ProfileAsPromise } from '../profiles/ProfileAsPromise'
+import { ensureRenderer } from '../profiles/sagas'
+import { StoreContainer } from '../store/rootTypes'
+import { ChatMessage, NotificationType } from '../types'
+import { lastPlayerPosition, positionObservable } from '../world/positionThings'
+import {
   SendPrivateMessage,
+  SEND_PRIVATE_MESSAGE,
   updateFriendship,
-  UPDATE_FRIENDSHIP,
   UpdateFriendship,
   updatePrivateMessagingState,
   updateUserData,
+  UPDATE_FRIENDSHIP,
 } from './actions'
-import { getClient, findByUserId, getPrivateMessaging } from './selectors'
-import { createLogger } from '../logger'
-import { ProfileAsPromise } from '../profiles/ProfileAsPromise'
-import { unityInterface } from 'unity-interface/dcl'
-import { ChatMessageType, FriendshipAction, PresenceStatus } from 'shared/types'
-import { SocialData, ChatState } from './types'
-import { StoreContainer } from '../store/rootTypes'
-import { ChatMessage, NotificationType } from '../types'
-import { getRealm } from 'shared/dao/selectors'
-import { Realm } from 'shared/dao/types'
-import { lastPlayerPosition, positionObservable } from '../world/positionThings'
-import { worldToGrid } from '../../atomicHelpers/parcelScenePositions'
-import { ensureRenderer } from '../profiles/sagas'
-import { ADDED_PROFILE_TO_CATALOG } from '../profiles/actions'
-import { isAddedToCatalog, getProfile } from 'shared/profiles/selectors'
-import { INIT_CATALYST_REALM, SET_CATALYST_REALM, SetCatalystRealm, InitCatalystRealm } from '../dao/actions'
-import { deepEqual } from '../../atomicHelpers/deepEqual'
-import { DEBUG_PM } from 'config'
-import { Vector3Component } from 'atomicHelpers/landHelpers'
+import { findByUserId, getClient, getPrivateMessaging } from './selectors'
+import { ChatState, SocialData } from './types'
 
 declare const globalThis: StoreContainer
 
@@ -52,6 +53,7 @@ const receivedMessages: Record<string, number> = {}
 const MESSAGE_LIFESPAN_MILLIS = 1000
 
 const SEND_STATUS_INTERVAL_MILLIS = 5000
+
 type PresenceMemoization = { realm: SocialRealm | undefined; position: UserPosition | undefined }
 const presenceMap: Record<string, PresenceMemoization | undefined> = {}
 
@@ -315,7 +317,7 @@ function sendUpdateUserStatus(id: string, status: CurrentUserStatus) {
   }
 
   DEBUG && logger.info(`unityInterface.UpdateUserPresence`, updateMessage)
-  unityInterface.UpdateUserPresence(updateMessage)
+  globalDCL.unityInterface.UpdateUserPresence(updateMessage)
 }
 
 function updateUserStatus(client: SocialAPI, ...socialIds: string[]) {
@@ -395,7 +397,7 @@ function* initializeStatusUpdateInterval(client: SocialAPI) {
     sendOwnStatusIfNecessary({ worldPosition: { x, y, z }, realm, timestamp: Date.now() })
   })
 
-  const handleSetCatalystRealm = (action: SetCatalystRealm & InitCatalystRealm) => {
+  const handleSetCatalystRealm = (action: SetCatalystRealm | InitCatalystRealm) => {
     const realm = action.payload
 
     sendOwnStatusIfNecessary({ worldPosition: lastPlayerPosition.clone(), realm, timestamp: Date.now() })

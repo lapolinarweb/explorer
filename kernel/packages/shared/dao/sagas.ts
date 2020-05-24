@@ -1,28 +1,28 @@
+import { REALM, WORLD_EXPLORER } from 'config'
+import { call, fork, put, select, takeEvery } from 'redux-saga/effects'
+import { getAddedServers, getContentAllowlist } from 'shared/meta/selectors'
+import { fecthCatalystRealms, fetchCatalystStatuses, getRealmFromString, pickCatalystRealm } from '.'
+import { getFromLocalStorage, saveToLocalStorage } from '../../atomicHelpers/localStorage'
+import { waitForMetaConfigurationInitialization } from '../meta/sagas'
 import {
-  WEB3_INITIALIZED,
   catalystRealmInitialized,
   initCatalystRealm,
-  setCatalystCandidates,
-  setAddedCatalystCandidates,
-  setContentAllowlist,
-  INIT_CATALYST_REALM,
-  SET_CATALYST_REALM,
   InitCatalystRealm,
-  SetCatalystRealm,
-  SET_CATALYST_CANDIDATES,
-  SET_ADDED_CATALYST_CANDIDATES,
-  SetCatalystCandidates,
+  INIT_CATALYST_REALM,
+  setAddedCatalystCandidates,
   SetAddedCatalystCandidates,
+  setCatalystCandidates,
+  SetCatalystCandidates,
+  SetCatalystRealm,
+  setContentAllowlist,
+  SET_ADDED_CATALYST_CANDIDATES,
+  SET_CATALYST_CANDIDATES,
+  SET_CATALYST_REALM,
+  WEB3_INITIALIZED,
 } from './actions'
-import { call, put, takeEvery, select, fork } from 'redux-saga/effects'
-import { WORLD_EXPLORER, REALM } from 'config'
-import { waitForMetaConfigurationInitialization } from '../meta/sagas'
-import { Candidate, Realm, ServerConnectionStatus } from './types'
-import { fecthCatalystRealms, fetchCatalystStatuses, pickCatalystRealm, getRealmFromString } from '.'
-import { getAddedServers, getContentAllowlist } from 'shared/meta/selectors'
-import { getAllCatalystCandidates } from './selectors'
-import { saveToLocalStorage, getFromLocalStorage } from '../../atomicHelpers/localStorage'
 import { ping } from './index'
+import { getAllCatalystCandidates } from './selectors'
+import { Candidate, Realm, ServerConnectionStatus } from './types'
 
 const CACHE_KEY = 'realm'
 const CATALYST_CANDIDATES_KEY = CACHE_KEY + '-' + SET_CATALYST_CANDIDATES
@@ -141,7 +141,7 @@ async function checkValidRealm(realm: Realm) {
   )
 }
 
-function* cacheCatalystRealm(action: InitCatalystRealm & SetCatalystRealm) {
+function* cacheCatalystRealm(action: InitCatalystRealm | SetCatalystRealm) {
   saveToLocalStorage(CACHE_KEY, action.payload)
 }
 

@@ -5,16 +5,17 @@ declare const window: any
 global.preview = window.preview = true
 global.enableWeb3 = window.enableWeb3
 
-import { initializeUnity } from 'unity-interface/initializer'
-import { loadPreviewScene, unityInterface } from 'unity-interface/dcl'
 import { DEBUG_WS_MESSAGES } from 'config'
+import { sceneLifeCycleObservable } from 'decentraland-loader/lifecycle/controllers/scene'
+import { future, IFuture } from 'fp-future'
 import defaultLogger from 'shared/logger'
-import { ILand, HUDElementID } from 'shared/types'
-import { pickWorldSpawnpoint } from 'shared/world/positionThings'
 import { signalRendererInitialized } from 'shared/renderer/actions'
 import { StoreContainer } from 'shared/store/rootTypes'
-import { future, IFuture } from 'fp-future'
-import { sceneLifeCycleObservable } from 'decentraland-loader/lifecycle/controllers/scene'
+import { HUDElementID, ILand } from 'shared/types'
+import { pickWorldSpawnpoint } from 'shared/world/positionThings'
+import { globalDCL } from 'unity-interface/globalDCL'
+import { instantiateUnityRenderer } from 'unity-interface/instantiateUnityRenderer'
+import { loadPreviewScene } from 'unity-interface/preview/loadPreviewScene'
 
 // Remove the 'dcl-loading' class, used until JS loads.
 document.body.classList.remove('dcl-loading')
@@ -76,9 +77,9 @@ function sceneRenderable() {
   return sceneRenderable
 }
 
-initializeUnity(container)
-  .then(async (ret) => {
-    const i = unityInterface
+instantiateUnityRenderer(container)
+  .then(async () => {
+    const i = globalDCL.unityInterface
     i.ConfigureHUDElement(HUDElementID.MINIMAP, { active: true, visible: true })
     i.ConfigureHUDElement(HUDElementID.NOTIFICATION, { active: true, visible: false })
     i.ConfigureHUDElement(HUDElementID.SETTINGS, { active: true, visible: false })
@@ -93,12 +94,8 @@ initializeUnity(container)
 
     await renderable
 
-    ret.instancedJS
-      .then(async ({ unityInterface }) => {
-        unityInterface.Teleport(pickWorldSpawnpoint(await defaultScene))
-        unityInterface.ActivateRendering()
-      })
-      .catch(defaultLogger.error)
+    i.Teleport(pickWorldSpawnpoint(await defaultScene))
+    i.ActivateRendering()
   })
   .catch((err) => {
     defaultLogger.error('There was an error', err)
