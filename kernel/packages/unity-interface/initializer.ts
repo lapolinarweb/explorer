@@ -51,7 +51,7 @@ export async function initializeUnity(
   Session.current.resolve(session)
   const qs = queryString.parse(document.location.search)
 
-  preventUnityKeyboardLock()
+  // preventUnityKeyboardLock()
 
   if (qs.ws) {
     _gameInstance = initializeUnityEditor(qs.ws, container)
