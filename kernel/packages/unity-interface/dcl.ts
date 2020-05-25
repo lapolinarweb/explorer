@@ -99,9 +99,7 @@ import { ILandToLoadableParcelScene, ILandToLoadableParcelSceneUpdate } from 'sh
 import { sendMessage, updateUserData, updateFriendship } from 'shared/chat/actions'
 import { ProfileAsPromise } from '../shared/profiles/ProfileAsPromise'
 
-declare const globalThis: UnityInterfaceContainer &
-  BrowserInterfaceContainer &
-  StoreContainer & { analytics: any; delighted: any }
+declare const globalThis: UnityInterfaceContainer & BrowserInterfaceContainer & StoreContainer & { analytics: any }
 
 type GameInstance = {
   SendMessage(object: string, method: string, ...args: (number | string)[]): void
@@ -246,10 +244,6 @@ const browserInterface = {
       version: profile.version,
       profile: profileToRendererFormat(profile, identity)
     })
-
-    if (data.tutorialStep === tutorialStepId.FINISHED) {
-      // we used to call delightedSurvey() here
-    }
   },
 
   ControlEvent({ eventType, payload }: { eventType: string; payload: any }) {
@@ -281,12 +275,11 @@ const browserInterface = {
   },
 
   UserAcceptedCollectibles(data: { id: string }) {
-    // Here, we should have "airdropObservable.notifyObservers(data.id)".
-    // It's disabled because of security reasons.
+    // Disabled Callback
   },
 
   EditAvatarClicked() {
-    // We used to call delightedSurvey() here
+    // Disabled Callback
   },
 
   ReportScene(sceneId: string) {
@@ -428,34 +421,6 @@ export function setLoadingScreenVisible(shouldShow: boolean) {
   if (!shouldShow && !EDITOR) {
     isTheFirstLoading = false
     TeleportController.stopTeleportAnimation()
-  }
-}
-
-export function delightedSurvey() {
-  // tslint:disable-next-line:strict-type-predicates
-  if (typeof globalThis === 'undefined' || typeof globalThis !== 'object') {
-    return
-  }
-  const { analytics, delighted } = globalThis
-  if (!analytics || !delighted) {
-    return
-  }
-  const profile = getUserProfile().profile as Profile | null
-  if (!isTheFirstLoading && profile) {
-    const payload = {
-      email: profile.email || profile.ethAddress + '@dcl.gg',
-      name: profile.name || 'Guest',
-      properties: {
-        ethAddress: profile.ethAddress,
-        anonymous_id: analytics && analytics.user ? analytics.user().anonymousId() : null
-      }
-    }
-
-    try {
-      delighted.survey(payload)
-    } catch (error) {
-      defaultLogger.error('Delighted error: ' + error.message, error)
-    }
   }
 }
 

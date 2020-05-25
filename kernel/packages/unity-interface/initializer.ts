@@ -51,8 +51,6 @@ export async function initializeUnity(
   Session.current.resolve(session)
   const qs = queryString.parse(document.location.search)
 
-  preventUnityKeyboardLock()
-
   if (qs.ws) {
     _gameInstance = initializeUnityEditor(qs.ws, container)
   } else {
@@ -66,31 +64,6 @@ export async function initializeUnity(
     engine: _gameInstance,
     container,
     instancedJS: _instancedJS!
-  }
-}
-
-/**
- * Prevent unity from locking the keyboard when there is an
- * active element (like delighted textarea)
- */
-function preventUnityKeyboardLock() {
-  const originalFunction = window.addEventListener
-  window.addEventListener = function(event: any, handler: any, options?: any) {
-    if (['keypress', 'keydown', 'keyup'].includes(event)) {
-      originalFunction.call(
-        window,
-        event,
-        e => {
-          if (!document.activeElement || document.activeElement === document.body) {
-            handler(e)
-          }
-        },
-        options
-      )
-    } else {
-      originalFunction.call(window, event, handler, options)
-    }
-    return true
   }
 }
 
